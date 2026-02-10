@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PSA 父母养育策略深度评估系统 (20题完整版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #e67e22; /* 活力橙 */
+            --accent: #3498db;
+            --bg: #f4f7f6;
+            --card: #ffffff;
+            --text: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 40px 0;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 900px;
+            background: var(--card);
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            position: relative;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            width: 100%;
+            height: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--secondary));
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        h1 { text-align: center; margin-bottom: 10px; font-size: 2.2em; color: var(--primary); }
+        .subtitle { text-align: center; color: #7f8c8d; margin-bottom: 40px; }
+
+        /* Setup Phase */
+        .setup-group label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 1.1em; }
+        select { width: 100%; padding: 15px; border: 2px solid #bdc3c7; border-radius: 8px; font-size: 16px; margin-bottom: 25px; outline: none; transition: 0.3s; }
+        select:focus { border-color: var(--accent); }
+
+        /* Quiz Phase */
+        .question-card { text-align: center; margin-top: 20px; animation: fadeIn 0.5s; }
+        .question-text { font-size: 1.6em; font-weight: 600; margin-bottom: 40px; min-height: 90px; display: flex; align-items: center; justify-content: center; }
+        
+        .options-grid { display: grid; gap: 15px; max-width: 600px; margin: 0 auto; }
+        .option-btn {
+            padding: 20px;
+            border: 2px solid #ecf0f1;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .option-btn:hover { border-color: var(--accent); background: #f0f8ff; transform: translateY(-3px); }
+
+        /* Result Phase (PDF Area) */
+        #print-area {
+            background: white;
+            padding: 40px; /* 增加内边距 */
+        }
+
+        .result-header {
+            text-align: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .style-box {
+            background: linear-gradient(135deg, var(--primary), #34495e);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .style-title { font-size: 2.5em; font-weight: bold; margin-bottom: 10px; }
+
+        .score-visual {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 40px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .score-val { font-size: 3em; font-weight: 800; color: var(--secondary); }
+        .score-label { color: #95a5a6; font-size: 0.9em; letter-spacing: 1px; }
+
+        /* 建议卡片 (核心) */
+        .advice-list { display: flex; flex-direction: column; gap: 25px; }
+        
+        .advice-card {
+            background: #fffcf5;
+            border-left: 6px solid #f39c12;
+            padding: 25px;
+            border-radius: 6px;
+            page-break-inside: avoid; /* 关键：防止打印断裂 */
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        }
+        
+        .advice-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #d35400;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .advice-block { margin-bottom: 12px; line-height: 1.8; font-size: 0.95em; text-align: justify; }
+        .tag { font-weight: bold; background: rgba(243, 156, 18, 0.15); padding: 2px 6px; border-radius: 4px; color: #d35400; margin-right: 5px; }
+
+        /* 按钮 */
+        .btn-main {
+            width: 100%;
+            padding: 18px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .btn-main:hover { background: #2980b9; transform: translateY(-2px); }
+        .btn-outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); margin-top: 10px; }
+        .btn-outline:hover { background: #f0f8ff; }
+
+        .hidden { display: none !important; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="progress-container" id="progress-box">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <div id="setup-phase">
+        <h1>PSA 父母养育策略深度评估</h1>
+        <div class="subtitle">20个场景 · 10分钟 · 颠覆认知的反馈</div>
+        
+        <div class="setup-group">
+            <label>您的性格底色 (MBTI简化)：</label>
+            <select id="parent-type">
+                <option value="SJ">SJ型 (严谨、规则、传统)</option>
+                <option value="NT">NT型 (逻辑、效率、质疑)</option>
+                <option value="NF">NF型 (情感、意义、和谐)</option>
+                <option value="SP">SP型 (灵活、体验、自由)</option>
+            </select>
+        </div>
+        <div class="setup-group">
+            <label>孩子的核心特质：</label>
+            <select id="child-type">
+                <option value="Active">皮实好动 (能量高，坐不住)</option>
+                <option value="Sensitive">敏感内向 (易受伤，察言观色)</option>
+                <option value="Logical">理性倔强 (爱讲理，不服软)</option>
+                <option value="Orderly">规矩稳重 (喜安稳，怕变动)</option>
+            </select>
+        </div>
+        <button class="btn-main" onclick="startQuiz()">开始测试</button>
+    </div>
+
+    <div id="quiz-phase" class="hidden">
+        <div class="question-card">
+            <div id="q-text" class="question-text">加载中...</div>
+            <div class="options-grid">
+                </div>
+        </div>
+    </div>
+
+    <div id="result-phase" class="hidden">
+        <div id="print-area">
+            <div class="result-header">
+                <h1>PSA 深度养育评估报告</h1>
+                <p>生成时间: <span id="report-date"></span></p>
+            </div>
+
+            <div class="style-box">
+                <div class="style-title" id="style-title">分析中...</div>
+                <p id="style-desc">...</p>
+            </div>
+
+            <div class="score-visual">
+                <div style="text-align:center">
+                    <div class="score-val" id="score-d">0%</div>
+                    <div class="score-label">要求性 (Demandingness)</div>
+                </div>
+                <div style="text-align:center">
+                    <div class="score-val" id="score-r">0%</div>
+                    <div class="score-label">反应性 (Responsiveness)</div>
+                </div>
+            </div>
+
+            <h2>💊 您的“排毒”行动清单</h2>
+            <p style="color:#666; margin-bottom:20px;">以下建议基于您在特定场景下的次优选择生成。请深呼吸，忠言逆耳：</p>
+            
+            <div id="advice-container" class="advice-list">
+                </div>
+            
+            <div style="margin-top:50px; text-align:center; font-size:0.8em; color:#999; border-top:1px solid #eee; padding-top:20px;">
+                本报告由 PSA 算法引擎生成 · 仅供自我反思使用
+            </div>
+        </div>
+
+        <button class="btn-main" onclick="downloadPDF()">⬇️ 保存为 PDF 报告</button>
+        <button class="btn-main btn-outline" onclick="location.reload()">↺ 重新测试</button>
+    </div>
+</div>
+
+<script>
+    /* ================= 20道核心题库与深度幽默建议 ================= */
+    /* type: R=Responsiveness, D=Demandingness
+       optimalVal: 'high' (应选同意) / 'low' (应选不同意)
+       advice: 包含 幽默吐槽/潜在后果/行动指南 三部分的 HTML 字符串
+    */
+    const questions = [
+        {
+            text: "当孩子因小事大哭时，我会先给予拥抱，而不是让他'不许哭'。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 如果眼泪真的能像水龙头一样说关就关，那您孩子一定是机器人。对着一个杏仁核（情绪脑）正在短路的孩子讲道理，或者下达禁哭令，就像试图对着龙卷风念经一样——除了感动自己，没有任何用处。</div><div class='advice-block'><span class='tag'>潜在后果</span> 长期被'静音'的孩子并不会学会情绪管理，他们只会学会情绪压抑。这些被吞下去的委屈，要么在青春期变成沉默的抑郁，要么变成关上房门后的仇恨。您想要一个只有在您面前才假装坚强的演员吗？</div><div class='advice-block'><span class='tag'>行动指南</span> 闭上嘴，张开手。只需要抱住他30秒，或者坐在他旁边说：'我知道你很难过'。等他呼吸平稳了，理智脑上线了，才是复盘的时候。先处理心情，再处理事情。</div>"
+        },
+        {
+            text: "我认为孩子必须绝对服从长辈，哪怕长辈说得不对。",
+            type: 'D',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 您是在养孩子，还是在训练警犬？'绝对服从'听起来很威风，但它的潜台词是：'别动脑子，听我的就行。' 如果您能保证自己永远正确，甚至能预测20年后的世界，那您可以继续坚持。</div><div class='advice-block'><span class='tag'>潜在后果</span> 这种'听话文化'培养出的孩子，在学校是毫无存在感的小透明，在职场是最好欺负的'老实人'。他们失去了独立判断是非的能力，因为由于长期缺乏练习，他们的'批判性思维'肌肉已经萎缩了。</div><div class='advice-block'><span class='tag'>行动指南</span> 把'顶嘴'重新定义为'低质量的辩论'。告诉孩子：'我不接受你的态度，但我对你的观点很感兴趣。请你冷静后，用逻辑说服我。' 允许孩子有理有据地反驳，是培养未来CEO的第一步。</div>"
+        },
+        {
+            text: "我会向孩子解释家务规则背后的逻辑，而不是只说'照做'。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> '因为我是你爸/妈'这句话，是育儿届最大的偷懒借口。这就好比老板让你加班却不给理由，只说'因为我是老板'，你心里难道不想在他咖啡里吐口水吗？</div><div class='advice-block'><span class='tag'>潜在后果</span> 没有逻辑支撑的规则就是霸权。霸权只能带来暂时的屈服，一旦监控消失（比如他去上大学了），所有规则都会反弹。他不会记得为什么要整理房间，他只记得'我很烦我妈唠叨'。</div><div class='advice-block'><span class='tag'>行动指南</span> 花一分钟解释'为什么'：'我们定这个规则不是为了控制你，而是因为如果不把乐高收起来，半夜踩到的那个人（可能就是你）会痛得怀疑人生。' 只有当孩子理解了规则保护的是大家的利益，他才会内化规则。</div>"
+        },
+        {
+            text: "只要没有安全隐患，我允许孩子尝试'冒险'（如爬树、淋雨）。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 您是打算把孩子裹在泡泡膜里过一辈子吗？现在的家长恨不得给孩子装个防撞条。但遗憾的是，温室里长不出参天大树，只能长出脆弱的豆芽菜。</div><div class='advice-block'><span class='tag'>潜在后果</span> 被过度保护的孩子会患上'习得性无助'。他们面对轻微的挫折就会崩溃，因为他们的'心理免疫系统'从未接触过细菌。未来社会充满不确定性，一个不敢冒险的人，注定只能做平庸的跟随者。</div><div class='advice-block'><span class='tag'>行动指南</span> 做一个'懒惰'的观察者。下次看到他试图爬高，只要没有生命危险，请咬住舌头，把'小心！'咽回去。您可以问：'你的脚踩稳了吗？' 引导他自我评估风险，而不是直接剥夺他体验风险的权利。</div>"
+        },
+        {
+            text: "如果孩子在公共场合闹腾，我会立刻执行惩罚，不顾及他的面子。",
+            type: 'D',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 在众目睽睽之下训斥孩子，除了展示您作为家长的'权威'（其实是失控）之外，唯一的教育成果就是让孩子感到羞耻。这种'公开处刑'的方式，会让孩子恨你，而不是恨他的错误行为。</div><div class='advice-block'><span class='tag'>潜在后果</span> 羞耻感不同于内疚感。内疚是'我做错了事'，羞耻是'我是个坏人'。被羞耻感淹没的孩子会产生破罐子破摔的心理，或者学会更高级的伪装术——在您看不见的地方加倍疯狂。</div><div class='advice-block'><span class='tag'>行动指南</span> 发明一个只有你们懂的'暗号'（比如捏捏手心）。在外面给足面子，回家再算总账。您可以说：'刚才在外面我没有发火，是尊重你，现在我们来谈谈你的行为。' 这种尊重会换来孩子真正的反思。</div>"
+        },
+        {
+            text: "为了激励孩子，我会拿'别人家的孩子'做对比。",
+            type: 'D',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 想象一下，如果您伴侣每天对您说：'你看隔壁老王，赚得比你多，头发比你密，还比你会做饭。' 您是想努力工作，还是想把老王（和您伴侣）一起送上火星？</div><div class='advice-block'><span class='tag'>潜在后果</span> 这种比较是亲子关系的核武器。它摧毁了孩子的独特价值感，让他觉得'父母爱的不是我，而是那个完美的幻影'。最终，他要么因自卑而躺平，要么因嫉妒而变得刻薄。</div><div class='advice-block'><span class='tag'>行动指南</span> 请将比较系统切换为'纵向模式'。只拿今天的他和昨天的他比：'嘿，你今天做作业比昨天快了10分钟，你是怎么做到的？' 这种关注'自我超越'的反馈，才是内驱力的燃料。</div>"
+        },
+        {
+            text: "因为心软或嫌麻烦，我经常放弃原定的惩罚。",
+            type: 'R',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 您的行为就像一台坏掉的自动售货机——摇晃两下就会掉出免费饮料。孩子是非常精明的观察家，一旦发现您的底线是可以像橡皮泥一样揉捏的，您的信用分就归零了。</div><div class='advice-block'><span class='tag'>潜在后果</span> 这种'薛定谔的规矩'会让孩子产生极大的不安全感（因为不知道哪次是真的），并培养出操控性人格。他们会把聪明才智全用在试探底线和讨价还价上，而不是遵守规则上。</div><div class='advice-block'><span class='tag'>行动指南</span> 温柔而坚定。定规则时可以民主讨论，一旦定下，执行必须像法律一样无情。如果惩罚是'没收iPad'，哪怕他哭出孟姜女的气势，哪怕您心里在滴血，也要等到时间到了再归还。</div>"
+        },
+        {
+            text: "我认为适当的体罚（如打手心）是必要的手段。",
+            type: 'D',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 体罚确实有效——如果您想要的是一个当面瑟瑟发抖、转身就咬人的孩子。这传达了一个非常糟糕的逻辑：'当我有权势且我很生气时，我就可以使用暴力解决问题。'</div><div class='advice-block'><span class='tag'>潜在后果</span> 研究数据是冰冷的：体罚与儿童攻击性增加、智商下降以及成年后抑郁风险正相关。您打下去的每一巴掌，都在切断孩子与您的情感连接，并教会他用拳头说话。</div><div class='advice-block'><span class='tag'>行动指南</span> 使用'逻辑后果'代替'暴力后果'。弄坏了玩具？那就没有玩具玩。把地弄脏了？那就负责清理干净。让他体验行为带来的自然麻烦，而不是体验皮肉之苦。</div>"
+        },
+        {
+            text: "当计划被打乱时，我能迅速调整心态，不迁怒于孩子。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 如果您因为孩子出门慢了五分钟就暴跳如雷，毁掉整个周末的行程，那您可能比孩子更需要'情绪管理课'。在这个充满变数的世界里，僵化是最大的弱点。</div><div class='advice-block'><span class='tag'>潜在后果</span> 父母的焦虑是会传染的。一个时刻紧绷、容不得半点差错的父母，会养出一个谨小慎微、害怕犯错的焦虑型孩子。他会觉得：'这个世界很危险，一旦失控就是灾难。'</div><div class='advice-block'><span class='tag'>行动指南</span> 把意外视为'彩蛋'。错过电影开场？那就去旁边吃个冰淇淋。展示给孩子看：'计划B虽然不同，但也很有趣。' 这份松弛感，是您能给孩子最好的心理资产。</div>"
+        },
+        {
+            text: "我清楚地知道孩子近期最关心的三个话题（游戏/朋友/偶像）。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 如果您对孩子的了解仅限于'考了多少分'和'吃饱了没'，那您只不过是一个尽职的'后勤主管'，而不是他的精神伙伴。别抱怨孩子不跟您说话，因为您根本听不懂他的话。</div><div class='advice-block'><span class='tag'>潜在后果</span> 亲子关系的疏远是从'无话可说'开始的。当他在青春期遇到真正的麻烦（霸凌、早恋、迷茫）时，他绝不会向一个连'奥特曼'还是'原神'都分不清的陌生人求助。</div><div class='advice-block'><span class='tag'>行动指南</span> 降维打击。哪怕您觉得那些游戏很弱智，也要假装感兴趣：'教教我这个怎么玩？' 让孩子当您的老师。这是建立连接的最短路径。</div>"
+        },
+        {
+            text: "吃饭时，不管饿不饿，碗里的饭必须吃完。",
+            type: 'D',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 这大概是祖传的'有一种饿叫家长觉得你饿'。把孩子的胃当成只要硬塞就能扩容的行李箱，除了制造家庭噪音和消化不良外，没有任何好处。</div><div class='advice-block'><span class='tag'>潜在后果</span> 强迫进食破坏了孩子天生的'饥饱感知系统'。这要么导致孩子因为把吃饭和痛苦挂钩而厌食，要么导致他们成年后无法停止进食（暴食症），因为他们从未学会听从身体的信号。</div><div class='advice-block'><span class='tag'>行动指南</span> 实行'责任分工制'：家长负责决定'吃什么'（营养）和'几点吃'（规律）；孩子拥有绝对权力决定'吃多少'。饿一顿饿不坏人，但逼一顿会坏了胃口和关系。</div>"
+        },
+        {
+            text: "相比于夸奖'聪明'，我更多夸奖'努力'或'方法'。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 总是夸'你好聪明'，就像给孩子喂精神鸦片。这让他觉得'聪明'是一种天赋，如果下次考不好，那就是'我不聪明了'。于是为了保住'聪明'的标签，他会拒绝挑战难题。</div><div class='advice-block'><span class='tag'>潜在后果</span> 这会培养出'固定型思维'。孩子会变得脆弱、输不起，认为努力是笨蛋才做的事。一旦遇到挫折，这种自信就会像肥皂泡一样瞬间破裂。</div><div class='advice-block'><span class='tag'>行动指南</span> 夸具体的细节：'我注意到你刚才为了解这道题，画了三张草稿纸，这种不放弃的态度太酷了。' 把赞美聚焦在可控的行为上，孩子才会知道下次该往哪里用力。</div>"
+        },
+        {
+            text: "进孩子房间前，我一定会敲门并等待回应。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 觉得'我是你妈/爸，看一眼怎么了'？这种逻辑放在室友身上叫'变态窥私狂'。如果您把孩子的房间当成随时可以巡视的殖民地，就别怪他在心里建起柏林墙。</div><div class='advice-block'><span class='tag'>潜在后果</span> 隐私边界被践踏的孩子，通常会有两个极端：要么彻底封闭，学会撒谎和藏匿（甚至藏在您找不到的云端）；要么变得边界感模糊，将来在人际关系中容易被侵犯。</div><div class='advice-block'><span class='tag'>行动指南</span> 敲门这个动作只需要 0.5 秒，但传递的信息是：'我尊重你作为一个独立的人。' 这份尊重会换来孩子的主动敞开心扉。</div>"
+        },
+        {
+            text: "我认为房间必须时刻保持整洁，凌乱代表堕落。",
+            type: 'D',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 您是在养孩子，还是在运营一家五星级酒店？对于孩子（尤其是创造力强的孩子）来说，'乱'有时是他们大脑正在高速运转的外在表现。爱因斯坦的桌子也很乱，您打算批评他吗？</div><div class='advice-block'><span class='tag'>潜在后果</span> 过度洁癖会扼杀孩子的探索欲和创造力。如果他玩什么都得小心翼翼怕弄脏，他就会停止探索。更糟糕的是，这会让他把'整洁'看得比'快乐'更重要，变成一个强迫症患者。</div><div class='advice-block'><span class='tag'>行动指南</span> 划定'混乱特区'。在公共区域（客厅）保持整洁，但在他的私人领地（房间或游戏角），允许适度的混乱。只要不长蘑菇，就随他去吧。</div>"
+        },
+        {
+            text: "看到孩子爬高或弄脏衣服，我会忍住不立刻阻止。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 每次孩子一动您就喊'小心'、'别弄脏'，您其实是孩子探索世界的背景噪音。这种过度的'声控'保护，让他觉得全世界都对他充满了恶意。</div><div class='advice-block'><span class='tag'>潜在后果</span> 衣服脏了可以洗，但好奇心一旦被吓回去就很难再出来了。被过度限制的孩子，要么变得胆小如鼠，要么因为长期压抑而在青春期进行报复性的危险尝试。</div><div class='advice-block'><span class='tag'>行动指南</span> 准备几套专门用来'糟蹋'的旧衣服。带他去泥坑里跳，去草地上滚。告诉自己：'脏衣服是快乐童年的勋章。' 洗衣机能解决的问题，都不是问题。</div>"
+        },
+        {
+            text: "家庭重大决策（如择校/搬家），我会听取孩子的意见。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 别以为孩子小就不懂事。如果您总是把他当成一件只能被搬运的行李，在这个家里只有服从权没有发言权，那他为什么要对这个家负责？</div><div class='advice-block'><span class='tag'>潜在后果</span> 缺乏参与感的孩子会缺乏责任感。当他在学校遇到问题时，他会想：'这是你们选的学校，不是我选的，所以你们来解决。' 这种'客体心态'是成长的绊脚石。</div><div class='advice-block'><span class='tag'>行动指南</span> 即使最终决定权在您，也要走个'听证会'流程。'你怎么看这个学校？你担心什么？' 让他觉得由于他的参与，这个决定变得更好了。这就是'主人翁意识'的来源。</div>"
+        },
+        {
+            text: "我会在孩子面前承认自己的错误或展示脆弱。",
+            type: 'R',
+            optimalVal: 'high',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 还在扮演'永远正确'的超人父母？别装了，孩子早就看穿了。一个从不道歉的父母，教不出一个会反思的孩子。您展示的不是完美，而是虚伪和死要面子。</div><div class='advice-block'><span class='tag'>潜在后果</span> 孩子会误以为'犯错是可怕的'，因为连爸妈都从不犯错。这会导致极度的完美主义焦虑。而且，当您死不认错时，您在教他：'只要权力够大，就可以指鹿为马。'</div><div class='advice-block'><span class='tag'>行动指南</span> 郑重其事地道歉：'对不起，刚才妈妈/爸爸情绪失控了，那是我的错，不怪你。' 这不是示弱，这是最高级的身教——教会孩子如何面对错误并修复关系。</div>"
+        },
+        {
+            text: "为了让孩子做作业，我会许诺金钱或物质奖励。",
+            type: 'D',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> '写完这页给五块钱'？您这是在雇佣童工，不是在教育。如果哪天您破产了，或者他对五块钱不感兴趣了，您的教育体系是不是就原地崩塌了？</div><div class='advice-block'><span class='tag'>潜在后果</span> 这种'贿赂'行为也就是著名的'德西效应'：外在奖励会吞噬内在动机。他本来可能对数学还有点兴趣，但现在他只对钱感兴趣。学习变成了为资本家（您）打工，他会想方设法偷工减料。</div><div class='advice-block'><span class='tag'>行动指南</span> 把'贿赂'变成'庆祝'。不要事前许诺，而在事后惊喜：'哇，因为大家今天效率高，多出了时间，我们全家去吃顿好的庆祝一下！' 让快乐成为努力的自然副产品。</div>"
+        },
+        {
+            text: "因为怕孩子学坏，我严格禁止他接触任何游戏或屏幕。",
+            type: 'D',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 在21世纪把孩子隔绝在数字世界之外，就像在工业革命时期禁止孩子接触蒸汽机。您以为这是保护，其实是把他在同龄人社交圈里变成了'原始人'。</div><div class='advice-block'><span class='tag'>潜在后果</span> 禁果分外甜。越是严厉禁止，孩子对电子产品的渴望就越病态。一旦离开您的视线，他会报复性地沉迷。而且，他失去了在您引导下建立健康数字习惯的机会。</div><div class='advice-block'><span class='tag'>行动指南</span> 只要不是禁毒，就不要搞'一刀切'。尝试'疏'而非'堵'。规定时间和内容，甚至和他一起玩一局。当游戏变成了家庭活动的一部分，它的神秘感和成瘾性反而会降低。</div>"
+        },
+        {
+            text: "如果孩子考得不好，我会比他更焦虑、更失落。",
+            type: 'D',
+            optimalVal: 'low',
+            advice: "<div class='advice-block'><span class='tag'>扎心吐槽</span> 皇上不急太监...啊不，孩子不急家长急。当您的情绪反应比当事人还剧烈时，您其实是在告诉孩子：'这不仅是你的失败，更是我的失败。' 这锅太沉了，孩子背不动的。</div><div class='advice-block'><span class='tag'>潜在后果</span> 这种'共生焦虑'会让孩子产生负罪感，或者为了照顾您的情绪而学习。一旦他觉得'我是在为你学'，他遇到困难时就会理直气壮地放弃：'反正你比我急，你来学吧。'</div><div class='advice-block'><span class='tag'>行动指南</span> 练习'课题分离'。默念三遍：'这是他的人生副本，我只是个NPC。' 当他考砸时，做一个冷静的顾问：'看来这个结果你不满意，需要我提供什么支持吗？' 把成长的痛感和责任还给他。</div>"
+        }
+    ];
+
+    /* ================= 逻辑控制 ================= */
+    let currentIdx = 0;
+    let rawScoreR = 0;
+    let rawScoreD = 0;
+    let collectedAdvice = [];
+    const userAnswers = [];
+
+    // 初始化日期
+    document.getElementById('report-date').innerText = new Date().toLocaleDateString();
+
+    function startQuiz() {
+        document.getElementById('setup-phase').classList.add('hidden');
+        document.getElementById('quiz-phase').classList.remove('hidden');
+        document.getElementById('progress-box').classList.remove('hidden');
+        showQuestion(0);
+    }
+
+    function showQuestion(idx) {
+        if (idx >= questions.length) {
+            finishQuiz();
+            return;
+        }
+
+        const q = questions[idx];
+        const pct = ((idx) / questions.length) * 100;
+        document.getElementById('progress-bar').style.width = `${pct}%`;
+
+        document.getElementById('q-text').innerHTML = `${idx + 1}. ${q.text}`;
+        
+        const optsDiv = document.querySelector('.options-grid');
+        optsDiv.innerHTML = '';
+        const labels = ["完全不同意", "不同意", "中立", "同意", "完全同意"];
+        
+        labels.forEach((label, val) => {
+            const btn = document.createElement('div');
+            btn.className = 'option-btn';
+            btn.innerText = label;
+            btn.onclick = (e) => handleAnswer(val, e);
+            optsDiv.appendChild(btn);
+        });
+    }
+
+    function handleAnswer(val, event) {
+        fireConfetti(event.clientX, event.clientY);
+        
+        const q = questions[currentIdx];
+        
+        // 简单的积分逻辑 (0-4分)
+        if (q.type === 'R') rawScoreR += val;
+        if (q.type === 'D') rawScoreD += val;
+
+        // 判定是否触发建议 (次优选择检测)
+        // High Optimal (应选3,4): 选 0,1,2 触发
+        // Low Optimal (应选0,1): 选 2,3,4 触发
+        let needsAdvice = false;
+        if (q.optimalVal === 'high' && val <= 2) needsAdvice = true;
+        if (q.optimalVal === 'low' && val >= 2) needsAdvice = true;
+
+        if (needsAdvice) {
+            collectedAdvice.push(q.advice);
+        }
+
+        currentIdx++;
+        
+        // UI反馈
+        const btns = document.querySelectorAll('.option-btn');
+        btns.forEach(b => b.style.pointerEvents = 'none');
+        event.target.style.background = '#e1f5fe';
+        event.target.style.borderColor = '#3498db';
+
+        setTimeout(() => showQuestion(currentIdx), 350);
+    }
+
+    function finishQuiz() {
+        document.getElementById('quiz-phase').classList.add('hidden');
+        document.getElementById('progress-box').classList.add('hidden');
+        document.getElementById('result-phase').classList.remove('hidden');
+
+        // 计算总分百分比
+        const rCount = questions.filter(q => q.type === 'R').length;
+        const dCount = questions.filter(q => q.type === 'D').length;
+        
+        const rPct = Math.round((rawScoreR / (rCount * 4)) * 100);
+        const dPct = Math.round((rawScoreD / (dCount * 4)) * 100);
+
+        document.getElementById('score-r').innerText = rPct + "%";
+        document.getElementById('score-d').innerText = dPct + "%";
+
+        // 风格判定
+        let styleTitle = "", styleDesc = "";
+        if (dPct >= 50 && rPct >= 50) {
+            styleTitle = "权威型 (Authoritative)";
+            styleDesc = "理想的黄金平衡！您既像导师一样设立边界，又像朋友一样给予支持。";
+        } else if (dPct >= 50 && rPct < 50) {
+            styleTitle = "独裁型 (Authoritarian)";
+            styleDesc = "高标准、严要求，但可能缺了一点温度。警惕孩子表面顺从内心反叛。";
+        } else if (dPct < 50 && rPct >= 50) {
+            styleTitle = "放任型 (Permissive)";
+            styleDesc = "爱意满满，但规则松散。小心把孩子养成温室里的花朵。";
+        } else {
+            styleTitle = "忽视型 (Uninvolved)";
+            styleDesc = "低介入模式。可能是太忙或太累，记得多给孩子一点时间。";
+        }
+        document.getElementById('style-title').innerText = styleTitle;
+        document.getElementById('style-desc').innerText = styleDesc;
+
+        // 生成建议列表
+        const container = document.getElementById('advice-container');
+        container.innerHTML = "";
+
+        // 1. 插入人岗匹配建议 (置顶)
+        const pType = document.getElementById('parent-type').value;
+        const cType = document.getElementById('child-type').value;
+        let matchText = "";
+        
+        if (pType === 'SJ' && cType === 'Active') {
+            matchText = "【人岗匹配警告】秩序型家长遇上好动型神兽。请每天给他1小时'合法捣乱时间'，放过他也是放过您自己。";
+        } else if (pType === 'NT' && cType === 'Sensitive') {
+            matchText = "【人岗匹配警告】逻辑型家长遇上敏感型孩子。在他哭的时候，请把讲道理的嘴闭上，先把拥抱的手张开。";
+        } else {
+            matchText = "【人岗匹配综述】您与孩子存在天然差异，请珍惜这份不同，那是他独立的标志。";
+        }
+
+        const matchDiv = document.createElement('div');
+        matchDiv.className = 'advice-card';
+        matchDiv.style.borderLeftColor = '#3498db';
+        matchDiv.innerHTML = `<div class='advice-header'>🧬 基因匹配特别建议</div><div class='advice-block'>${matchText}</div>`;
+        container.appendChild(matchDiv);
+
+        // 2. 插入行为建议
+        if (collectedAdvice.length === 0) {
+            const perfectDiv = document.createElement('div');
+            perfectDiv.className = 'advice-card';
+            perfectDiv.style.borderLeftColor = '#2ecc71';
+            perfectDiv.innerHTML = `<div class='advice-header'>🏆 完美通关</div><div class='advice-block'>简直难以置信！在所有20个关键场景中，您都避开了心理学陷阱。您是育儿界的特种兵！</div>`;
+            container.appendChild(perfectDiv);
+        } else {
+            collectedAdvice.forEach((html, i) => {
+                const div = document.createElement('div');
+                div.className = 'advice-card';
+                div.innerHTML = `<div class='advice-header'>💥 诊断报告 #${i+1}</div>` + html;
+                container.appendChild(div);
+            });
+        }
+    }
+
+    function fireConfetti(x, y) {
+        const xNorm = x / window.innerWidth;
+        const yNorm = y / window.innerHeight;
+        confetti({
+            particleCount: 40, spread: 50, origin: { x: xNorm, y: yNorm },
+            colors: ['#3498db', '#e67e22', '#2ecc71'],
+            disableForReducedMotion: true
+        });
+    }
+
+    /* PDF 下载逻辑优化版 */
+    window.downloadPDF = async function() {
+        const element = document.getElementById('print-area');
+        const btn = document.querySelector('.btn-main');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ 正在渲染高清报告...";
+        btn.disabled = true;
+
+        try {
+            // 滚动到顶部以确保完整截图
+            window.scrollTo(0,0);
+            
+            const canvas = await html2canvas(element, {
+                scale: 2, // 提高清晰度
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            
+            // 长图分页逻辑
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            let heightLeft = pdfHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - pdfHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+                heightLeft -= pageHeight;
+            }
+
+            pdf.save('PSA_深度养育诊断书.pdf');
+
+        } catch (err) {
+            console.error(err);
+            alert("生成失败，请尝试使用浏览器的'打印'功能保存为PDF。");
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
